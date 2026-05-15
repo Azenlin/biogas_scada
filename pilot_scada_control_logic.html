@@ -1,0 +1,166 @@
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>模廠試驗 SCADA 監控</title>
+</head>
+<body>
+<style>
+h2.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.wrap{padding:12px 0;color:var(--color-text-primary);font-size:13px}
+.top-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.pill{padding:4px 12px;border-radius:20px;border:1px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-secondary);font-size:12px;cursor:pointer;transition:all .15s}
+.pill.active{background:var(--color-background-info);border-color:var(--color-border-info);color:var(--color-text-info)}
+.budget-bar{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:var(--color-text-secondary)}
+.budget-track{width:140px;height:8px;border-radius:4px;background:var(--color-border-tertiary);overflow:hidden}
+.budget-fill{height:100%;border-radius:4px;background:#1D9E75;transition:width .3s}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:7px 9px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500;border-bottom:1px solid var(--color-border-tertiary);white-space:nowrap;font-size:12px}
+td{padding:7px 9px;border-bottom:1px solid var(--color-border-tertiary);vertical-align:middle;line-height:1.45}
+tr.selected td{background:var(--color-background-secondary)}
+tr.deselected td{opacity:.45}
+.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;white-space:nowrap}
+.p1{background:#FCEBEB;color:#791F1F} .p2{background:#FAEEDA;color:#633806} .p3{background:#E1F5EE;color:#085041} .p4{background:#F1EFE8;color:#5F5E5A}
+@media(prefers-color-scheme:dark){
+  .p1{background:#791F1F;color:#F7C1C1}.p2{background:#633806;color:#FAC775}.p3{background:#085041;color:#9FE1CB}.p4{background:#444441;color:#D3D1C7}
+}
+.cat-lbl{font-size:11px;color:var(--color-text-tertiary)}
+.toggle-btn{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.toggle-btn.on{background:var(--color-background-success);border-color:var(--color-border-success)}
+.toggle-btn.off{background:var(--color-background-danger);border-color:var(--color-border-danger)}
+.row-wrap{display:flex;align-items:center;gap:6px}
+.cost-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.summary{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+.sum-card{padding:6px 14px;border-radius:8px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px}
+.sum-card b{display:block;font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.reason{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+</style>
+<div class="wrap">
+<h2 class="sr-only">前期模廠 3 槽 SCADA 控制邏輯清單，可點選開關各項目以評估預算</h2>
+
+<div class="summary" id="summary"></div>
+
+<div class="top-bar">
+  <div id="filters"></div>
+  <div class="budget-bar">
+    <span>保留項目</span>
+    <div class="budget-track"><div class="budget-fill" id="bfill" style="width:100%"></div></div>
+    <span id="bpct">100%</span>
+  </div>
+</div>
+
+<table>
+<thead>
+<tr>
+  <th style="width:28px"></th>
+  <th style="width:68px">優先度</th>
+  <th style="width:80px">類別</th>
+  <th style="width:175px">控制邏輯</th>
+  <th>輸入訊號</th>
+  <th>輸出動作</th>
+  <th style="width:170px">必要性說明</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<script>
+const items=[
+  {id:0,pri:"P1 必做",pc:"p1",cat:"溫控",name:"PID 溫度控制",input:"PT100 × 1/槽（3點）",output:"加熱器 ON/OFF + 熱水泵調速",why:"核心實驗變因。無此控制則 55°C 條件無法維持，數據完全失效",cost:3,on:true},
+  {id:1,pri:"P1 必做",pc:"p1",cat:"溫控",name:"超溫聯鎖切斷",input:"PT100 高溫偵測 (>65°C)",output:"加熱器強制 OFF + 警報",why:"設備安全底線。槽體爆裂或菌相崩潰的預防，不可省",cost:1,on:true},
+  {id:2,pri:"P1 必做",pc:"p1",cat:"淋灑",name:"定時淋灑控制",input:"計時器",output:"淋灑泵 ON/OFF（4–6次/天）",why:"乾式厭氧的核心機制。無淋灑=無質傳=無產氣，實驗無法進行",cost:2,on:true},
+  {id:3,pri:"P1 必做",pc:"p1",cat:"淋灑",name:"液位聯鎖保護",input:"沼液儲槽液位（高/低）",output:"淋灑泵禁止啟動",why:"防止泵浦空轉燒毀。低成本實現，省略代價是硬體損壞",cost:1,on:true},
+  {id:4,pri:"P1 必做",pc:"p1",cat:"沼氣",name:"H₂S 高濃度聯鎖",input:"H₂S 感測器（廠房）",output:"強制通風 + 停機警報",why:"人員安全。法規要求。模廠試驗有人員長期在場，不可省",cost:1,on:true},
+  {id:5,pri:"P1 必做",pc:"p1",cat:"沼氣",name:"沼氣流量記錄",input:"瓦斯流量計（每槽）",output:"資料記錄至 SCADA",why:"這是 BMP 試驗的核心量測目的，沒有產氣量數據則整個實驗無意義",cost:2,on:true},
+  {id:6,pri:"P2 建議",pc:"p2",cat:"溫控",name:"雙點溫度比對",input:"PT100-1 + PT100-2（備用）",output:"感測器故障切換 + 警報",why:"模廠試驗期間若感測器故障但未發現，會讓整批次數據作廢。建議裝備用點",cost:2,on:true},
+  {id:7,pri:"P2 建議",pc:"p2",cat:"淋灑",name:"pH 聯鎖暫停淋灑",input:"pH 感測器（回流槽）",output:"淋灑泵暫停 + 警報",why:"pH 過低是酸化前兆。可防止高溫系統崩潰。感測器成本約 1–2 萬，值得",cost:2,on:true},
+  {id:8,pri:"P2 建議",pc:"p2",cat:"沼氣",name:"CH₄ 含量監控",input:"沼氣分析儀 CH₄ 通道",output:"趨勢記錄 + 低值警報",why:"CH₄ 是產氣品質指標，也是計算甲烷潛勢的依據。Aztech 1400 已在設備清單中",cost:1,on:true},
+  {id:9,pri:"P2 建議",pc:"p2",cat:"安全",name:"CH₄ 廠房洩漏偵測",input:"CH₄ 氣體偵測器（廠房）",output:"警報 + 通風啟動",why:"爆炸風險。模廠試驗規模雖小但密閉空間風險不低，建議保留",cost:1,on:true},
+  {id:10,pri:"P3 可延後",pc:"p3",cat:"溫控",name:"加熱器運轉時數統計",input:"加熱器運轉狀態回饋",output:"維護提醒通知",why:"預防保養功能，模廠試驗期間設備使用時間短，效益有限，可延後至正式廠",cost:1,on:false},
+  {id:11,pri:"P3 可延後",pc:"p3",cat:"淋灑",name:"淋灑頻率動態調整",input:"槽溫 + pH 組合邏輯",output:"自動修改淋灑計時器設定",why:"進階 AI 最佳化功能。模廠階段先用固定排程收集基礎數據，之後再導入",cost:2,on:false},
+  {id:12,pri:"P3 可延後",pc:"p3",cat:"沼氣",name:"緩衝槽壓力控制",input:"壓力感測器（沼氣袋）",output:"洩壓閥動作",why:"模廠用沼氣袋或水封，壓力自然釋放，不需電動控制。正式廠再加",cost:2,on:false},
+  {id:13,pri:"P3 可延後",pc:"p3",cat:"系統",name:"批次進出料聯鎖",input:"操作員指令 + HRT 計時",output:"進料許可訊號",why:"3 槽模廠以人工決策進出料為主，自動化聯鎖許可意義不大，可省",cost:1,on:false},
+  {id:14,pri:"P4 可省",pc:"p4",cat:"系統",name:"遠端手機推播警報",input:"SCADA 警報事件",output:"LINE / SMS 通知",why:"模廠試驗期間通常有人員駐場，HMI 警報燈已足夠，此功能可省",cost:1,on:false},
+  {id:15,pri:"P4 可省",pc:"p4",cat:"系統",name:"自動報表產生",input:"歷史資料庫",output:"PDF / Excel 定期匯出",why:"試驗階段手動匯出即可，自動報表屬於正式廠商業運轉需求",cost:1,on:false},
+  {id:16,pri:"P4 可省",pc:"p4",cat:"沼氣",name:"CO₂ 獨立監控通道",input:"Aztech 1400 CO₂ 通道",output:"趨勢記錄",why:"若 Aztech 已記錄全組成，SCADA 端可只接 CH₄ + H₂S，CO₂ 由分析儀本機存",cost:1,on:false},
+  {id:17,pri:"P4 可省",pc:"p4",cat:"系統",name:"OPC-UA 標準通訊",input:"PLC 資料",output:"標準協定輸出給第三方",why:"模廠只需 Modbus 即可。OPC-UA 是正式廠擴充用，先省下軟體授權費",cost:2,on:false},
+];
+
+const cats=["全部",...new Set(items.map(d=>d.cat))];
+const pris=["全部","P1 必做","P2 建議","P3 可延後","P4 可省"];
+let catF="全部",priF="全部";
+
+function filtered(){
+  return items.filter(d=>(catF==="全部"||d.cat===catF)&&(priF==="全部"||d.pri===priF));
+}
+
+function totalCost(arr){return arr.reduce((s,d)=>s+d.cost,0)}
+
+function updateSummary(){
+  const on=items.filter(d=>d.on);
+  const all=items;
+  const maxC=totalCost(all);
+  const curC=totalCost(on);
+  const pct=Math.round(curC/maxC*100);
+  document.getElementById("bfill").style.width=pct+"%";
+  document.getElementById("bpct").textContent=pct+"%";
+  const p1on=on.filter(d=>d.pri==="P1 必做").length;
+  const p1all=all.filter(d=>d.pri==="P1 必做").length;
+  document.getElementById("summary").innerHTML=`
+    <div class="sum-card"><b>${on.length} / ${all.length}</b>已選控制項目</div>
+    <div class="sum-card"><b style="color:#E24B4A">${p1on} / ${p1all}</b>P1 必做已選</div>
+    <div class="sum-card"><b style="color:#1D9E75">${items.filter(d=>d.on&&d.pri==="P2 建議").length}</b>P2 建議已選</div>
+    <div class="sum-card"><b style="color:#888">相對工程量 ${pct}%</b>已選 vs 全部</div>
+  `;
+}
+
+function renderTable(){
+  const fd=filtered();
+  document.getElementById("tbody").innerHTML=fd.map(d=>`
+  <tr class="${d.on?"selected":"deselected"}" id="row-${d.id}">
+    <td><div class="row-wrap"><button class="toggle-btn ${d.on?"on":"off"}" onclick="toggle(${d.id})" title="${d.on?"點擊移除":"點擊加入"}">${d.on?"✓":"×"}</button></div></td>
+    <td><span class="badge ${d.pc}">${d.pri}</span></td>
+    <td><span class="cat-lbl">${d.cat}</span></td>
+    <td style="font-weight:500">${d.name}</td>
+    <td style="font-size:12px">${d.input}</td>
+    <td style="font-size:12px">${d.output}</td>
+    <td style="font-size:11px;color:var(--color-text-secondary)">${d.why}</td>
+  </tr>`).join("");
+  updateSummary();
+}
+
+function toggle(id){
+  const item=items.find(d=>d.id===id);
+  if(item.pri==="P1 必做"&&item.on){
+    if(!confirm("這是 P1 必做項目，確定要移除嗎？")) return;
+  }
+  item.on=!item.on;
+  renderTable();
+}
+
+function buildFilters(){
+  const fe=document.getElementById("filters");
+  fe.innerHTML="";
+  const makeRow=(list,getter,setter,current)=>{
+    list.forEach(f=>{
+      const b=document.createElement("button");
+      b.className="pill"+(current()===f?" active":"");
+      b.textContent=f;
+      b.onclick=()=>{setter(f);buildFilters();renderTable()};
+      fe.appendChild(b);
+    });
+  };
+  makeRow(cats,null,v=>{catF=v},()=>catF);
+  const sep=document.createElement("span");
+  sep.style.cssText="width:1px;height:20px;background:var(--color-border-tertiary);margin:0 4px;display:inline-block;vertical-align:middle";
+  fe.appendChild(sep);
+  makeRow(pris,null,v=>{priF=v},()=>priF);
+}
+
+buildFilters();
+renderTable();
+</script>
+
+</body>
+</html>

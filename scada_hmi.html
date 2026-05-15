@@ -1,0 +1,323 @@
+
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>模廠試驗 SCADA 監控</title>
+</head>
+<body>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body,html{background:transparent}
+.scada{background:#0d1117;color:#c9d1d9;font-family:'Courier New',monospace;font-size:12px;border-radius:10px;overflow:hidden;width:100%}
+.topbar{background:#161b22;border-bottom:1px solid #30363d;display:flex;align-items:center;justify-content:space-between;padding:8px 16px}
+.topbar-title{color:#58a6ff;font-size:13px;font-weight:500;letter-spacing:.5px}
+.topbar-right{display:flex;align-items:center;gap:16px;font-size:11px;color:#8b949e}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-ok{background:#3fb950}
+.dot-warn{background:#d29922}
+.dot-alarm{background:#f85149;animation:blink 1s step-start infinite}
+@keyframes blink{50%{opacity:0}}
+.main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d;padding:1px}
+.tank-panel{background:#0d1117;padding:12px}
+.tank-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #21262d}
+.tank-name{font-size:13px;font-weight:500;color:#e6edf3}
+.tank-status{font-size:10px;padding:2px 7px;border-radius:10px}
+.st-run{background:#0d2d0d;color:#3fb950;border:1px solid #238636}
+.st-warn{background:#2d1f00;color:#d29922;border:1px solid #9e6a03}
+.st-alarm{background:#2d0d0d;color:#f85149;border:1px solid #da3633}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.metric{background:#161b22;border:1px solid #21262d;border-radius:6px;padding:7px 9px}
+.metric-label{font-size:10px;color:#8b949e;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.metric-val{font-size:17px;font-weight:500;color:#e6edf3;letter-spacing:-.3px}
+.metric-unit{font-size:10px;color:#8b949e;margin-left:2px}
+.metric-ok .metric-val{color:#3fb950}
+.metric-warn .metric-val{color:#d29922}
+.metric-alarm .metric-val{color:#f85149}
+.setpoint{font-size:10px;color:#8b949e;margin-top:2px}
+.trend-bar{height:4px;background:#21262d;border-radius:2px;margin-top:5px;overflow:hidden}
+.trend-fill{height:100%;border-radius:2px;transition:width .3s}
+.tf-ok{background:#3fb950}
+.tf-warn{background:#d29922}
+.tf-alarm{background:#f85149}
+.section-label{font-size:10px;color:#58a6ff;letter-spacing:.5px;margin:8px 0 5px;text-transform:uppercase}
+.io-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d}
+.io-row:last-child{border-bottom:none}
+.io-name{color:#8b949e;font-size:11px}
+.io-val{font-size:11px;font-weight:500}
+.io-on{color:#3fb950}
+.io-off{color:#484f58}
+.io-auto{color:#58a6ff}
+.gas-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0}
+.gas-name{color:#8b949e;font-size:10px;width:36px}
+.gas-bar-wrap{flex:1;margin:0 6px;height:6px;background:#21262d;border-radius:3px;overflow:hidden}
+.gas-bar{height:100%;border-radius:3px}
+.gb-ch4{background:#58a6ff}
+.gb-h2s{background:#f85149}
+.gas-num{font-size:10px;font-weight:500;width:38px;text-align:right}
+.alarm-panel{background:#0d1117;border-top:1px solid #30363d;padding:10px 16px}
+.alarm-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.alarm-title{color:#f85149;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px}
+.alarm-list{display:flex;flex-direction:column;gap:4px}
+.alarm-item{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;font-size:11px}
+.ai-crit{background:#2d0d0d;border-left:3px solid #f85149}
+.ai-warn{background:#2d1f00;border-left:3px solid #d29922}
+.ai-info{background:#0d1f2d;border-left:3px solid #58a6ff}
+.alarm-time{color:#8b949e;width:45px;flex-shrink:0;font-size:10px}
+.alarm-tag{font-size:10px;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.tag-c{background:#da3633;color:#ffdcd8}
+.tag-w{background:#9e6a03;color:#ffd60a}
+.tag-i{background:#1f6feb;color:#cae8ff}
+.alarm-msg{color:#c9d1d9;flex:1}
+.ack-btn{font-size:10px;padding:2px 7px;border:1px solid #30363d;border-radius:3px;background:transparent;color:#8b949e;cursor:pointer}
+.bottom-bar{background:#161b22;border-top:1px solid #30363d;display:flex;align-items:center;gap:0;font-size:11px}
+.bb-tab{padding:8px 16px;color:#8b949e;border-right:1px solid #30363d;cursor:pointer}
+.bb-tab.active{color:#58a6ff;border-bottom:2px solid #58a6ff}
+.bb-right{margin-left:auto;padding:8px 16px;color:#8b949e;font-size:10px;display:flex;align-items:center;gap:12px}
+.spray-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d}
+.spray-cell{background:#0d1117;padding:8px 12px;display:flex;align-items:center;justify-content:space-between}
+.spray-name{font-size:11px;color:#8b949e}
+.spray-info{font-size:10px;color:#8b949e;margin-top:2px}
+.pump-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pump-on{background:#3fb950}
+.pump-off{background:#484f58}
+.ph-badge{font-size:11px;font-weight:500}
+</style>
+
+<div class="scada">
+
+<div class="topbar">
+  <div class="topbar-title"><i class="ti ti-adjustments-horizontal" style="font-size:14px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>模廠試驗 SCADA — 3 槽監控主畫面</div>
+  <div class="topbar-right">
+    <span><span class="status-dot dot-alarm"></span>警報 1 件</span>
+    <span><span class="status-dot dot-ok"></span>通訊正常</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="tank-panel">
+    <div class="tank-header">
+      <span class="tank-name">槽體 T-01</span>
+      <span class="tank-status st-run">運轉中</span>
+    </div>
+
+    <div class="section-label">溫控 (P1)</div>
+    <div class="metric-grid">
+      <div class="metric metric-ok">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 槽內溫度</div>
+        <div class="metric-val">54.8<span class="metric-unit">°C</span></div>
+        <div class="setpoint">設定值 55.0°C</div>
+        <div class="trend-bar"><div class="trend-fill tf-ok" style="width:88%"></div></div>
+      </div>
+      <div class="metric metric-ok">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 備用感測器 (P2)</div>
+        <div class="metric-val">54.6<span class="metric-unit">°C</span></div>
+        <div class="setpoint">差值 0.2°C ✓</div>
+        <div class="trend-bar"><div class="trend-fill tf-ok" style="width:87%"></div></div>
+      </div>
+    </div>
+
+    <div class="section-label">沼氣 (P1 · P2)</div>
+    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;padding:7px 9px;margin-bottom:10px">
+      <div class="metric-label" style="margin-bottom:6px"><i class="ti ti-chart-line" style="font-size:11px" aria-hidden="true"></i> 產氣量</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+        <span style="font-size:20px;font-weight:500;color:#3fb950">12.4</span>
+        <span style="font-size:10px;color:#8b949e">L/hr</span>
+        <span style="font-size:10px;color:#8b949e;margin-left:auto">今日累積 210 L</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">CH₄</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-ch4" style="width:63%"></div></div>
+        <span class="gas-num" style="color:#58a6ff">63%</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">H₂S</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-h2s" style="width:6%"></div></div>
+        <span class="gas-num" style="color:#3fb950">3 ppm</span>
+      </div>
+    </div>
+
+    <div class="section-label">設備狀態 (P1)</div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-flame" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>加熱器</span><span class="io-val io-on">ON</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>熱水循環泵</span><span class="io-val io-auto">AUTO</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplets" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>液位保護</span><span class="io-val io-on">OK</span></div>
+  </div>
+
+  <div class="tank-panel">
+    <div class="tank-header">
+      <span class="tank-name">槽體 T-02</span>
+      <span class="tank-status st-warn">注意</span>
+    </div>
+
+    <div class="section-label">溫控 (P1)</div>
+    <div class="metric-grid">
+      <div class="metric metric-warn">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 槽內溫度</div>
+        <div class="metric-val">52.1<span class="metric-unit">°C</span></div>
+        <div class="setpoint">偏差 -2.9°C !</div>
+        <div class="trend-bar"><div class="trend-fill tf-warn" style="width:82%"></div></div>
+      </div>
+      <div class="metric metric-ok">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 備用感測器 (P2)</div>
+        <div class="metric-val">52.3<span class="metric-unit">°C</span></div>
+        <div class="setpoint">差值 0.2°C ✓</div>
+        <div class="trend-bar"><div class="trend-fill tf-ok" style="width:83%"></div></div>
+      </div>
+    </div>
+
+    <div class="section-label">沼氣 (P1 · P2)</div>
+    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;padding:7px 9px;margin-bottom:10px">
+      <div class="metric-label" style="margin-bottom:6px"><i class="ti ti-chart-line" style="font-size:11px" aria-hidden="true"></i> 產氣量</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+        <span style="font-size:20px;font-weight:500;color:#d29922">9.1</span>
+        <span style="font-size:10px;color:#8b949e">L/hr</span>
+        <span style="font-size:10px;color:#8b949e;margin-left:auto">今日累積 154 L</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">CH₄</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-ch4" style="width:51%"></div></div>
+        <span class="gas-num" style="color:#d29922">51%</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">H₂S</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-h2s" style="width:14%"></div></div>
+        <span class="gas-num" style="color:#d29922">7 ppm</span>
+      </div>
+    </div>
+
+    <div class="section-label">設備狀態 (P1)</div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-flame" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>加熱器</span><span class="io-val io-on">ON</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>熱水循環泵</span><span class="io-val io-auto">AUTO</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplets" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>液位保護</span><span class="io-val io-on">OK</span></div>
+  </div>
+
+  <div class="tank-panel">
+    <div class="tank-header">
+      <span class="tank-name">槽體 T-03</span>
+      <span class="tank-status st-alarm">警報</span>
+    </div>
+
+    <div class="section-label">溫控 (P1)</div>
+    <div class="metric-grid">
+      <div class="metric metric-ok">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 槽內溫度</div>
+        <div class="metric-val">55.2<span class="metric-unit">°C</span></div>
+        <div class="setpoint">設定值 55.0°C</div>
+        <div class="trend-bar"><div class="trend-fill tf-ok" style="width:89%"></div></div>
+      </div>
+      <div class="metric metric-ok">
+        <div class="metric-label"><i class="ti ti-temperature" style="font-size:11px" aria-hidden="true"></i> 備用感測器 (P2)</div>
+        <div class="metric-val">55.4<span class="metric-unit">°C</span></div>
+        <div class="setpoint">差值 0.2°C ✓</div>
+        <div class="trend-bar"><div class="trend-fill tf-ok" style="width:90%"></div></div>
+      </div>
+    </div>
+
+    <div class="section-label">沼氣 (P1 · P2)</div>
+    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;padding:7px 9px;margin-bottom:10px">
+      <div class="metric-label" style="margin-bottom:6px"><i class="ti ti-chart-line" style="font-size:11px" aria-hidden="true"></i> 產氣量</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+        <span style="font-size:20px;font-weight:500;color:#3fb950">14.2</span>
+        <span style="font-size:10px;color:#8b949e">L/hr</span>
+        <span style="font-size:10px;color:#8b949e;margin-left:auto">今日累積 241 L</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">CH₄</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-ch4" style="width:67%"></div></div>
+        <span class="gas-num" style="color:#58a6ff">67%</span>
+      </div>
+      <div class="gas-row">
+        <span class="gas-name">H₂S</span>
+        <div class="gas-bar-wrap"><div class="gas-bar gb-h2s" style="width:36%"></div></div>
+        <span class="gas-num" style="color:#f85149">18 ppm</span>
+      </div>
+    </div>
+
+    <div class="section-label">設備狀態 (P1)</div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-flame" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>加熱器</span><span class="io-val io-on">ON</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>熱水循環泵</span><span class="io-val io-auto">AUTO</span></div>
+    <div class="io-row"><span class="io-name"><i class="ti ti-droplets" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>液位保護</span><span class="io-val io-on">OK</span></div>
+  </div>
+
+</div>
+
+<div style="background:#0d1117;border-top:1px solid #30363d;border-bottom:1px solid #30363d">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d">
+    <div style="background:#0d1117;padding:8px 12px">
+      <div class="section-label" style="margin-top:4px">淋灑系統 T-01 (P1·P2)</div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-clock" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>下次淋灑</span><span class="io-val" style="color:#58a6ff">14:30</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>淋灑泵</span><span class="io-val io-off">OFF (待機)</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-test-pipe" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>沼液 pH (P2)</span><span class="ph-badge" style="color:#3fb950">7.2</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-ruler" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>儲槽液位</span><span class="io-val io-on">68%</span></div>
+    </div>
+    <div style="background:#0d1117;padding:8px 12px">
+      <div class="section-label" style="margin-top:4px">淋灑系統 T-02 (P1·P2)</div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-clock" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>下次淋灑</span><span class="io-val" style="color:#58a6ff">14:30</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>淋灑泵</span><span class="io-val io-off">OFF (待機)</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-test-pipe" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>沼液 pH (P2)</span><span class="ph-badge" style="color:#d29922">6.6</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-ruler" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>儲槽液位</span><span class="io-val io-on">71%</span></div>
+    </div>
+    <div style="background:#0d1117;padding:8px 12px">
+      <div class="section-label" style="margin-top:4px">淋灑系統 T-03 (P1·P2)</div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-clock" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>下次淋灑</span><span class="io-val" style="color:#58a6ff">14:30</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-droplet" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>淋灑泵</span><span class="io-val io-off">OFF (待機)</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-test-pipe" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>沼液 pH (P2)</span><span class="ph-badge" style="color:#3fb950">7.4</span></div>
+      <div class="io-row"><span class="io-name"><i class="ti ti-ruler" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>儲槽液位</span><span class="io-val io-on">55%</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="alarm-panel">
+  <div class="alarm-header">
+    <div class="alarm-title"><i class="ti ti-bell" style="font-size:13px" aria-hidden="true"></i>警報記錄</div>
+    <span style="font-size:10px;color:#8b949e">最近 3 筆</span>
+  </div>
+  <div class="alarm-list">
+    <div class="alarm-item ai-crit">
+      <span class="alarm-time">14:02:11</span>
+      <span class="alarm-tag tag-c">CRIT</span>
+      <span class="alarm-msg">T-03 H₂S 濃度超限 18 ppm &gt; 10 ppm — 廠房通風已啟動</span>
+      <button class="ack-btn">ACK</button>
+    </div>
+    <div class="alarm-item ai-warn">
+      <span class="alarm-time">13:47:35</span>
+      <span class="alarm-tag tag-w">WARN</span>
+      <span class="alarm-msg">T-02 槽溫低偏差 -2.9°C — 加熱器輸出已增加至 100%</span>
+      <button class="ack-btn">ACK</button>
+    </div>
+    <div class="alarm-item ai-info">
+      <span class="alarm-time">11:20:04</span>
+      <span class="alarm-tag tag-i">INFO</span>
+      <span class="alarm-msg">T-02 沼液 pH 6.6，接近下限閾值 6.5，請注意觀察</span>
+      <button class="ack-btn">—</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <span class="bb-tab active">主畫面</span>
+  <span class="bb-tab">趨勢圖</span>
+  <span class="bb-tab">批次記錄</span>
+  <span class="bb-tab">設備 I/O</span>
+  <div class="bb-right">
+    <span>批次第 <b style="color:#c9d1d9">8</b> 天 / 21 天</span>
+    <span>操作員：<b style="color:#c9d1d9">LOCAL</b></span>
+  </div>
+</div>
+
+</div>
+<script>
+function tick(){
+  const now=new Date();
+  const s=n=>String(n).padStart(2,'0');
+  const el=document.getElementById('clock');
+  if(el) el.textContent=s(now.getHours())+':'+s(now.getMinutes())+':'+s(now.getSeconds());
+}
+tick();
+setInterval(tick,1000);
+</script>
+
+</body>
+</html>

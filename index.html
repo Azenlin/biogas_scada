@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>屏東沼氣模廠試驗 — SCADA 系統</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e14;
+      --surface: #111820;
+      --border: #1e2a36;
+      --accent: #00c896;
+      --accent-dim: #00c89622;
+      --text: #d4e0ec;
+      --text-muted: #5a7080;
+      --warn: #f0a020;
+      --danger: #e84040;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', 'Consolas', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--accent-dim); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 8px transparent; }
+    }
+
+    h1 {
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: normal;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-top: 6px;
+    }
+
+    .divider {
+      width: 100%;
+      max-width: 560px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--accent), var(--border), transparent);
+      margin: 0 auto 48px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .card {
+      display: block;
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      background: #0d1820;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-tag {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .card-arrow {
+      position: absolute;
+      bottom: 20px; right: 20px;
+      font-size: 18px;
+      color: var(--border);
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .card:hover .card-arrow {
+      color: var(--accent);
+      transform: translate(3px, -3px);
+    }
+
+    .status-bar {
+      margin-top: 48px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+
+    .dot-green { background: var(--accent); }
+    .dot-warn  { background: var(--warn); }
+
+    #clock {
+      color: var(--text);
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-dot"></div>
+      <h1>Biogas Pilot SCADA</h1>
+      <div class="logo-dot"></div>
+    </div>
+    <p class="subtitle">屏東長治農業科學園區 &mdash; 模廠試驗監控系統</p>
+  </header>
+
+  <div class="divider"></div>
+
+  <div class="cards">
+
+    <a class="card" href="scada_hmi.html">
+      <div class="card-tag">HMI &mdash; 主監控畫面</div>
+      <div class="card-title">3 槽即時監控</div>
+      <div class="card-desc">
+        槽溫、產氣量、CH₄／H₂S 濃度、<br>
+        淋灑系統狀態、警報記錄
+      </div>
+      <div class="card-arrow">&#8599;</div>
+    </a>
+
+    <a class="card" href="pilot_scada_control_logic.html">
+      <div class="card-tag">控制邏輯 &mdash; 規劃文件</div>
+      <div class="card-title">P1／P2 控制項目清單</div>
+      <div class="card-desc">
+        必做項目、建議項目優先度分析，<br>
+        可互動篩選與預算評估
+      </div>
+      <div class="card-arrow">&#8599;</div>
+    </a>
+
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot dot-green"></span>
+      <span>系統正常</span>
+    </div>
+    <div class="status-item">
+      <span class="status-dot dot-warn"></span>
+      <span>模擬數據 &mdash; 非即時連線</span>
+    </div>
+    <div class="status-item">
+      <span id="clock"></span>
+    </div>
+  </div>
+
+  <script>
+    function tick() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('clock').textContent =
+        now.getFullYear() + '-' +
+        pad(now.getMonth() + 1) + '-' +
+        pad(now.getDate()) + '  ' +
+        pad(now.getHours()) + ':' +
+        pad(now.getMinutes()) + ':' +
+        pad(now.getSeconds());
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
