@@ -34,6 +34,27 @@ tr.deselected td{opacity:.45}
 .sum-card{padding:6px 14px;border-radius:8px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px}
 .sum-card b{display:block;font-size:18px;font-weight:500;color:var(--color-text-primary)}
 .reason{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+@media(max-width:640px){
+  body{padding:8px}
+  .wrap{padding:8px 0}
+  .top-bar{flex-direction:column;align-items:flex-start;gap:8px}
+  .budget-bar{margin-left:0;width:100%}
+  .budget-track{flex:1}
+  .summary{gap:8px}
+  .sum-card{padding:6px 10px;font-size:11px;flex:1;min-width:calc(50% - 4px)}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tr{border:1px solid var(--color-border-tertiary);border-radius:8px;margin-bottom:10px;padding:10px 12px;background:var(--color-background-primary);overflow:hidden}
+  tr.deselected{opacity:.5}
+  tr.selected{background:var(--color-background-secondary)}
+  td{border:none;padding:0}
+  td[data-label]{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px solid var(--color-border-tertiary);font-size:12px}
+  td[data-label]::before{content:attr(data-label);font-size:10px;color:var(--color-text-tertiary);min-width:56px;flex-shrink:0;padding-top:2px}
+  .td-toggle{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--color-border-tertiary)}
+  .td-pri,.td-cat{display:inline-block!important;width:auto!important;padding:0}
+  .td-name{display:inline-block!important;width:auto!important;font-weight:500;font-size:13px;margin-left:4px;padding:0}
+  .td-toggle::after{content:attr(data-info)}
+}
 </style>
 <div class="wrap">
 <h2 class="sr-only">前期模廠 3 槽 SCADA 控制邏輯清單，可點選開關各項目以評估預算</h2>
@@ -119,13 +140,13 @@ function renderTable(){
   const fd=filtered();
   document.getElementById("tbody").innerHTML=fd.map(d=>`
   <tr class="${d.on?"selected":"deselected"}" id="row-${d.id}">
-    <td><div class="row-wrap"><button class="toggle-btn ${d.on?"on":"off"}" onclick="toggle(${d.id})" title="${d.on?"點擊移除":"點擊加入"}">${d.on?"✓":"×"}</button></div></td>
-    <td><span class="badge ${d.pc}">${d.pri}</span></td>
-    <td><span class="cat-lbl">${d.cat}</span></td>
-    <td style="font-weight:500">${d.name}</td>
-    <td style="font-size:12px">${d.input}</td>
-    <td style="font-size:12px">${d.output}</td>
-    <td style="font-size:11px;color:var(--color-text-secondary)">${d.why}</td>
+    <td class="td-toggle"><div class="row-wrap"><button class="toggle-btn ${d.on?"on":"off"}" onclick="toggle(${d.id})" title="${d.on?"點擊移除":"點擊加入"}">${d.on?"✓":"×"}</button></div></td>
+    <td class="td-pri"><span class="badge ${d.pc}">${d.pri}</span></td>
+    <td class="td-cat"><span class="cat-lbl">${d.cat}</span></td>
+    <td class="td-name" style="font-weight:500">${d.name}</td>
+    <td data-label="輸入訊號" style="font-size:12px">${d.input}</td>
+    <td data-label="輸出動作" style="font-size:12px">${d.output}</td>
+    <td data-label="必要性說明" style="font-size:11px;color:var(--color-text-secondary)">${d.why}</td>
   </tr>`).join("");
   updateSummary();
 }

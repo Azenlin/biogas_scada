@@ -19,6 +19,7 @@ body,html{background:transparent}
 .dot-alarm{background:#f85149;animation:blink 1s step-start infinite}
 @keyframes blink{50%{opacity:0}}
 .main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d;padding:1px}
+@media(max-width:700px){.main{grid-template-columns:1fr}}
 .tank-panel{background:#0d1117;padding:12px}
 .tank-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #21262d}
 .tank-name{font-size:13px;font-weight:500;color:#e6edf3}
@@ -82,6 +83,19 @@ body,html{background:transparent}
 .pump-on{background:#3fb950}
 .pump-off{background:#484f58}
 .ph-badge{font-size:11px;font-weight:500}
+@media(max-width:700px){
+  .topbar{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
+  .topbar-right{gap:10px;font-size:10px;flex-wrap:wrap}
+  .metric-grid{grid-template-columns:1fr 1fr}
+  .spray-grid-wrap{display:grid;grid-template-columns:1fr!important}
+  .alarm-item{flex-wrap:wrap;gap:6px}
+  .alarm-msg{width:100%;order:4}
+  .alarm-time{font-size:10px}
+  .bottom-bar{flex-wrap:wrap}
+  .bb-tab{padding:8px 10px;font-size:10px}
+  .bb-right{width:100%;border-top:1px solid #30363d;padding:6px 12px;font-size:10px}
+  .topbar-title{font-size:12px}
+}
 </style>
 
 <div class="scada">
@@ -244,7 +258,7 @@ body,html{background:transparent}
 </div>
 
 <div style="background:#0d1117;border-top:1px solid #30363d;border-bottom:1px solid #30363d">
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d">
+  <div class="spray-grid-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#30363d">
     <div style="background:#0d1117;padding:8px 12px">
       <div class="section-label" style="margin-top:4px">淋灑系統 T-01 (P1·P2)</div>
       <div class="io-row"><span class="io-name"><i class="ti ti-clock" style="font-size:11px;margin-right:3px" aria-hidden="true"></i>下次淋灑</span><span class="io-val" style="color:#58a6ff">14:30</span></div>
